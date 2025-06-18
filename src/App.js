@@ -16,6 +16,7 @@ function App() {
           rel="noopener noreferrer"
         >
           <h1>Welcome to the Staging Environment!</h1>
+          <h2>Implemented CI/CD to staging environment</h2>
         </a>
       </header>
     </div>
