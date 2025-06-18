@@ -17,8 +17,6 @@ function App() {
         >
           <h1>Welcome to the Staging Environment!</h1>
           <h2>Implemented CI/CD to staging environment</h2>
-          <h3>I love you Vani!!!</h3>
-          <h4>Vani loves venkat</h4>
         </a>
       </header>
     </div>
