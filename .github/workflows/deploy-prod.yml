@@ -18,18 +18,26 @@ jobs:
         with:
           node-version: '18'
 
-      - name: Install dependencies
-        run: npm install
-
-      - name: Build React app
-        run: npm run build
-
-      - name: Prepare SSH key
+      - name: Install dependencies and build
         run: |
-          echo "${{ secrets.EC2_SSH_KEY }}" > key.pem
-          chmod 600 key.pem
+          npm install
+          npm run build
 
-      - name: Deploy to PRODUCTION EC2
+      - name: Save EC2 SSH private key
         run: |
-          ssh -o StrictHostKeyChecking=no -i key.pem ${{ secrets.EC2_USER }}@${{ secrets.PROD_HOST }} "rm -rf ~/app && mkdir ~/app"
-          scp -o StrictHostKeyChecking=no -i key.pem -r build/* ${{ secrets.EC2_USER }}@${{ secrets.PROD_HOST }}:~/app
+          echo "${{ secrets.EC2_PROD_SSH_KEY }}" > prod-key.pem
+          chmod 600 prod-key.pem
+
+      - name: Deploy to Production EC2
+        run: |
+          echo "Cleaning old app..."
+          ssh -o StrictHostKeyChecking=no -i prod-key.pem ${{ secrets.EC2_PROD_USER }}@${{ secrets.PROD_HOST }} "sudo rm -rf /var/www/react-app/*"
+
+          echo "Copying new build..."
+          scp -o StrictHostKeyChecking=no -i prod-key.pem -r build/* ${{ secrets.EC2_PROD_USER }}@${{ secrets.PROD_HOST }}:/tmp/build/
+
+          echo "Moving files to Nginx directory..."
+          ssh -o StrictHostKeyChecking=no -i prod-key.pem ${{ secrets.EC2_PROD_USER }}@${{ secrets.PROD_HOST }} "sudo mv /tmp/build/* /var/www/react-app/"
+
+          echo "Restarting Nginx..."
+          ssh -o StrictHostKeyChecking=no -i prod-key.pem ${{ secrets.EC2_PROD_USER }}@${{ secrets.PROD_HOST }} "sudo systemctl restart nginx"
