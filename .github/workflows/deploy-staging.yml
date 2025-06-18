@@ -10,28 +10,39 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
+      # Step 1: Checkout the repo
       - name: Checkout code
         uses: actions/checkout@v3
 
+      # Step 2: Set up Node.js environment
       - name: Set up Node.js
         uses: actions/setup-node@v3
         with:
           node-version: '18'
 
-      - name: Install dependencies
-        run: npm install
-
-      - name: Build React App
+      # Step 3: Install dependencies and build React app
+      - name: Install dependencies and build
         run: |
           npm install
           npm run build
 
-      - name: Save private key
+      # Step 4: Save private SSH key to file for secure access
+      - name: Save EC2 SSH private key
         run: |
           echo "${{ secrets.EC2_SSH_KEY }}" > key.pem
           chmod 600 key.pem
 
+      # Step 5: Deploy to EC2 instance (clean, copy, move, restart nginx)
       - name: Deploy to EC2
         run: |
-          ssh -o StrictHostKeyChecking=no -i key.pem ${{ secrets.EC2_USER }}@${{ secrets.STAGING_HOST }} "rm -rf ~/app && mkdir ~/app"
-          scp -o StrictHostKeyChecking=no -i key.pem -r build/* ${{ secrets.EC2_USER }}@${{ secrets.STAGING_HOST }}:~/app
+          echo "Cleaning old app directory..."
+          ssh -o StrictHostKeyChecking=no -i key.pem ${{ secrets.EC2_USER }}@${{ secrets.STAGING_HOST }} "sudo rm -rf /var/www/react-app/*"
+
+          echo "Uploading new build files..."
+          scp -o StrictHostKeyChecking=no -i key.pem -r build/* ${{ secrets.EC2_USER }}@${{ secrets.STAGING_HOST }}:/tmp/build/
+
+          echo "Moving files to Nginx directory..."
+          ssh -o StrictHostKeyChecking=no -i key.pem ${{ secrets.EC2_USER }}@${{ secrets.STAGING_HOST }} "sudo mv /tmp/build/* /var/www/react-app/"
+
+          echo "Restarting Nginx..."
+          ssh -o StrictHostKeyChecking=no -i key.pem ${{ secrets.EC2_USER }}@${{ secrets.STAGING_HOST }} "sudo systemctl restart nginx"
